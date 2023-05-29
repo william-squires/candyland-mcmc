@@ -1,6 +1,7 @@
 from collections import Counter
 
 board = [
+    {"special": "start"},
     {"color": "r"},
     {"color": "p"},
     {"color": "y"},
@@ -138,12 +139,14 @@ board = [
     {"color": "o"},
     {"color": "g"},
     {"color": "r"},
-    {"color": "end"}
+    {"special": "end"}
 ]
 
 characters = ["ginger", "candy", "gumdrop", "grandma", "lolly", "queen"]
 
 colors = ["r", "o", "y", "g", "b", "p"]
+
+bridges = ["rainbow", "gumdrop"]
 
 deck = Counter(
     {
