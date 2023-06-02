@@ -3,6 +3,7 @@ from random import shuffle, choice
 import matplotlib.pyplot as plt
 import pandas
 import seaborn as sns
+from numpy import matmul
 
 from candyland_resources import board, deck, characters, colors, bridges
 
@@ -57,12 +58,14 @@ class CandyLand():
         self.deck = deck
         self.shuffled_deck = self.make_shuffled_deck()
 
+
         self.characters = characters
         self.character_mappings = self._make_character_mappings()
 
         self.bridges = bridges
         self.bridge_mappings = self._make_bridge_mappings()
 
+        self.traversal_matrix = self.make_traversal_matrix()
         self.pos = 0
 
     def traverse(self, card, start=0):
@@ -84,6 +87,9 @@ class CandyLand():
         """
 
         start_space: dict = self.board[start]
+
+        if start_space.get("special") == "end":
+            return start
 
         #handle miss a turn spaces
         if start_space.get("special") == "miss":
@@ -123,6 +129,42 @@ class CandyLand():
             turns += 1
 
         return turns
+
+    def make_traversal_matrix(self):
+        """Builds a traversal matrix using board and deck:
+        ex: [
+                Space1[p(space1), p(space2), p(space3),...],
+                Space2[p(space1), p(space2), p(space3),...],
+                ...
+        ]
+        """
+        traversal_matrix = []
+        deck_size = self.deck.total()
+        for i in range(len(self.board)):
+            m = [0] * len(self.board)
+            for (card, count) in dict(self.deck).items():
+                m[self.traverse(card, i)] += count/deck_size
+            traversal_matrix.append(m)
+        return traversal_matrix
+
+    def play_markov(self):
+        """Play candyland using traversal matrix.
+        Return list of probabilities.
+        ex: [chance to win by turn 0, chance to win by turn 1,...]
+        """
+        probs = []
+        initial = [0] * len(self.board)
+        initial[0] = 1
+        def play(arr):
+            """Given a game state array, calculate the next game state"""
+            if arr[len(self.board)-1] > .99:
+                return
+            next = matmul(arr, self.traversal_matrix)
+            probs.append(next)
+            play(next)
+
+        play(initial)
+        return probs
 
     def make_shuffled_deck(self):
         """Returns a shuffled deck derived from instance's deck"""
@@ -171,15 +213,23 @@ class CandyLand():
         return None
 
 candyland = CandyLand(board, deck, characters, bridges)
+markov_probs = candyland.play_markov()
+win_probs = [prob[len(prob)-1] for prob in markov_probs]
+markov_df = pandas.DataFrame(win_probs, columns=["Markov"])
+freqs = sns.lineplot(markov_df)
+plt.show()
 games_to_play = 100000
 turns = []
 for i in range(games_to_play):
     turns.append(candyland.play())
 
+turns_counter = Counter(turns)
+
 turn_counts_df = pandas.DataFrame(
     turns,
     columns=["Turns"]
 )
+print(turn_counts_df)
 
-freqs = sns.displot(turn_counts_df, x="Turns", kind="kde")
-plt.show()
+# freqs = sns.displot(turn_counts_df, kind="kde")
+# plt.show()
