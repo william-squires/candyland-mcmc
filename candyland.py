@@ -157,7 +157,7 @@ class CandyLand():
         initial[0] = 1
         def play(arr):
             """Given a game state array, calculate the next game state"""
-            if arr[len(self.board)-1] > .99:
+            if arr[len(self.board)-1] > .995:
                 return
             next = matmul(arr, self.traversal_matrix)
             probs.append(next)
@@ -213,23 +213,38 @@ class CandyLand():
         return None
 
 candyland = CandyLand(board, deck, characters, bridges)
+
 markov_probs = candyland.play_markov()
 win_probs = [prob[len(prob)-1] for prob in markov_probs]
+for i in range(len(win_probs)-1, 0, -1):
+    if i > 0 :
+        win_probs[i] = win_probs[i] - win_probs[i-1]
+win_probs = win_probs[0:100:]
 markov_df = pandas.DataFrame(win_probs, columns=["Markov"])
 freqs = sns.lineplot(markov_df)
 plt.show()
-games_to_play = 100000
+
+games_to_play = 1000000
 turns = []
 for i in range(games_to_play):
     turns.append(candyland.play())
-
 turns_counter = Counter(turns)
-
+turns_dist = []
+for i in range(100):
+    if turns_counter.get(i):
+        turns_dist.append(turns_counter[i]/games_to_play)
+    else:
+        turns_dist.append(0)
 turn_counts_df = pandas.DataFrame(
-    turns,
-    columns=["Turns"]
+    turns_dist,
+    columns=["Monte Carlo"]
 )
-print(turn_counts_df)
+freqs = sns.lineplot(turn_counts_df)
+plt.show()
 
-# freqs = sns.displot(turn_counts_df, kind="kde")
-# plt.show()
+both_df = pandas.DataFrame(
+    {"Markov": win_probs,
+     "Monte Carlo": turns_dist}
+)
+freqs = sns.lineplot(both_df)
+plt.show()
